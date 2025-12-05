@@ -12,7 +12,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 # --- KONFIGURASI ---
 LIST_URL = "https://www.komdigi.go.id/berita/berita-hoaks"
 CSV_FILE = "hoax_data_complete.csv"
-MAX_PAGES = 5 
+MAX_PAGES = 1298
 
 def setup_driver():
     options = webdriver.ChromeOptions()
@@ -136,3 +136,4 @@ if __name__ == "__main__":
         run_step_1(driver, MAX_PAGES)
     finally:
         driver.quit()
+
