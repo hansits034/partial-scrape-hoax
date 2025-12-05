@@ -8,7 +8,15 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
-# --- KONFIGURASI ---
+# ==========================================
+# --- KONFIGURASI BATCH (GANTI DI SINI) ---
+# ==========================================
+# Batch 1: 0 sampai 4000
+# Batch 2: 4000 sampai 8000
+# Batch 3: 8000 sampai 12000, dst...
+BATCH_START = 0     
+BATCH_END   = 4000  
+
 CSV_FILE = "hoax_data_complete.csv"
 
 def setup_driver():
@@ -21,66 +29,66 @@ def setup_driver():
     options.add_argument("--disable-gpu")
     options.add_argument("--remote-debugging-port=9222")
     options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36")
-    
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
     return driver
 
-def run_step_2(driver):
+def run_step_2_batch(driver):
     if not os.path.exists(CSV_FILE):
-        print(f"File {CSV_FILE} tidak ditemukan. Jalankan Step 1 dulu.")
+        print(f"File {CSV_FILE} tidak ditemukan.")
         return
 
     df = pd.read_csv(CSV_FILE)
+    total_rows = len(df)
     
-    # Filter hanya data yang kolom 'content'-nya masih kosong (NaN)
-    targets = df[df['content'].isnull()].index
+    # Pastikan range tidak melebihi jumlah data
+    real_end = min(BATCH_END, total_rows)
+    
+    print(f"\n=== MODE BATCH ===")
+    print(f"Total Data: {total_rows}")
+    print(f"Target Batch: Baris {BATCH_START} sampai {real_end}")
+
+    # Ambil index data yang content-nya masih kosong (NaN)
+    empty_indices = df[df['content'].isnull()].index
+    
+    # FILTER: Hanya ambil index yang masuk dalam range BATCH_START s/d BATCH_END
+    targets = [idx for idx in empty_indices if BATCH_START <= idx < real_end]
     
     if len(targets) == 0:
-        print("Semua data sudah memiliki konten. Tidak ada yang perlu di-scrape.")
+        print("✅ Batch ini sudah lengkap atau tidak ada data kosong di range ini.")
         return
 
-    print(f"\n=== [STEP 2] MENGAMBIL KONTEN ({len(targets)} Artikel) ===")
+    print(f"--> Akan memproses {len(targets)} URL di batch ini.\n")
 
     for i, idx in enumerate(targets):
         url = df.at[idx, 'url']
-        print(f"[{i+1}/{len(targets)}] Membuka: {url}")
+        print(f"[{i+1}/{len(targets)}] (Baris {idx}) {url}")
         
         try:
             driver.get(url)
             try:
-                # Menunggu elemen custom-body muncul
-                WebDriverWait(driver, 15).until(EC.presence_of_element_located((By.CLASS_NAME, "custom-body")))
-                content_elem = driver.find_element(By.CLASS_NAME, "custom-body")
-                
-                # Mengambil text (opsional: bisa ambil innerHTML jika butuh format)
-                content = content_elem.text
-                
+                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CLASS_NAME, "custom-body")))
+                content = driver.find_element(By.CLASS_NAME, "custom-body").text
                 df.at[idx, 'content'] = content
-                print("   -> OK: Konten tersimpan.")
+                print("   -> OK: Tersimpan")
             except:
-                print("   -> FAIL: Konten tidak ditemukan/Timeout.")
-                # Kita biarkan kosong agar bisa dicoba lagi nanti, 
-                # atau set "ERR" jika ingin skip di run berikutnya.
-                # df.at[idx, 'content'] = "ERR_TIMEOUT" 
-
+                print("   -> SKIP: Konten tidak muncul/Timeout")
+                # Bisa diisi error flag jika mau, tapi dibiarkan kosong agar bisa diretry nanti
         except Exception as e:
-            print(f"   -> ERROR Link: {e}")
+            print(f"   -> ERROR: {e}")
         
-        # Simpan setiap 5 data agar aman jika crash
-        if (i+1) % 5 == 0:
+        # Save setiap 10 data biar aman
+        if (i+1) % 10 == 0:
             df.to_csv(CSV_FILE, index=False)
-            print("   (Data disimpan ke CSV)")
         
-        # Delay sopan
-        time.sleep(2)
+        time.sleep(1) 
 
-    # Simpan final
+    # Simpan hasil akhir batch
     df.to_csv(CSV_FILE, index=False)
-    print("\n=== STEP 2 SELESAI ===")
+    print(f"\n=== BATCH {BATCH_START}-{real_end} SELESAI DISIMPAN ===")
 
 if __name__ == "__main__":
     driver = setup_driver()
     try:
-        run_step_2(driver)
+        run_step_2_batch(driver)
     finally:
         driver.quit()
