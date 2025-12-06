@@ -17,7 +17,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 BATCH_START = 0     
 BATCH_END   = 17000  
 
-CSV_FILE = "hoax_data_complete2.csv"
+CSV_FILE = "hoax_data_complete.csv"
 
 def setup_driver():
     options = webdriver.ChromeOptions()
