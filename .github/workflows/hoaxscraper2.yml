@@ -55,6 +55,6 @@ jobs:
             echo "------------------------------------------------"
             echo "ADA DATA BARU! MENYIMPAN KE REPO..."
             echo "------------------------------------------------"
-            git commit -m "Auto-save: Update data hoax_data_complete2.csv [skip ci]"
+            git commit -m "Auto-save: Update data hoax_data_complete.csv [skip ci]"
             git push
           fi
